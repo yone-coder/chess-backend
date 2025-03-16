@@ -8,18 +8,22 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
-    origin: "*", // In production, replace with your frontend URL
+    origin: "*", // Replace with your frontend URL in production
     methods: ["GET", "POST"]
   }
 });
 
-const port = process.env.PORT || 3001; // Render assigns PORT
-const games = new Map(); // Stores game states
+const port = process.env.PORT || 3001;
+const games = new Map();
+
+// Add a simple root route to confirm the server is running
+app.get('/', (req, res) => {
+  res.send('Chess Backend Server is running. Use the frontend to play!');
+});
 
 io.on('connection', (socket) => {
   console.log('New client connected');
 
-  // Create a new game room
   socket.on('createRoom', () => {
     const roomId = uuidv4();
     const game = new Chess();
@@ -28,7 +32,6 @@ io.on('connection', (socket) => {
     socket.emit('roomCreated', { roomId, color: 'white' });
   });
 
-  // Join an existing game room
   socket.on('joinRoom', (roomId) => {
     const room = games.get(roomId);
     if (!room) {
@@ -46,7 +49,6 @@ io.on('connection', (socket) => {
     io.to(roomId).emit('gameStart', { fen: room.game.fen() });
   });
 
-  // Handle moves
   socket.on('move', ({ roomId, move }) => {
     const room = games.get(roomId);
     if (!room) return;
@@ -65,7 +67,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Handle disconnection
   socket.on('disconnect', () => {
     for (const [roomId, room] of games) {
       if (room.players.includes(socket.id)) {
